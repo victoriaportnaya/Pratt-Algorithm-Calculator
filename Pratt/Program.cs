@@ -1,26 +1,68 @@
 ﻿using System;
 using System.Collections.Generic;
-
-
+using System.Text;
 
 // perform programme
 public class TryCalculate
 {
     public static void Main()
-    {   
-        string expression = Console.ReadLine();
+    {
+        Console.WriteLine("Type your expression >>");
+        string expression = Console.ReadLine() ?? string.Empty;
         var tokenized = Tokenizer.Tokenize(expression);
-        var tokens = Converter(tokenized);
+        var tokens = Convert(tokenized);
 
         var pratt = new Pratt(tokens);
         var rpnized = pratt.ToRPN();
+        // print RPN
+        foreach (var token in rpnized)
+        {
+            if (token.Type == Token.TokenType.Number)
+            {
+                Console.Write(token.Value);
+            }
+            else if (token.Type == Token.TokenType.Operator || token.Type == Token.TokenType.Parenthesis)
+            {
+                Console.Write(token.MathOperator);
+            }
+        }
 
         var evaluator = new Evaluator(rpnized);
         var result = evaluator.Calculator();
-
+        Console.WriteLine();
         Console.WriteLine(result);
     }
+
+    static Queue<Token> Convert(Queue<string> tokenized)
+    {
+        var tokens = new Queue<Token>();
+        while (tokenized.Count > 0)
+        {
+            var str = tokenized.Dequeue();
+            if (int.TryParse(str, out int number))
+            {
+                tokens.Enqueue(Token.Number(number));
+            }
+            else if (IsOperator(str))
+            {
+                tokens.Enqueue(Token.Operator(str[0]));
+            }
+            else if (str == "(" || str == ")")
+            {
+                tokens.Enqueue(Token.Parenthesis(str[0]));
+            }
+        }
+        return tokens;
+    }
+
+    static bool IsOperator(string str)
+    {
+        return str == "+" || str == "-" || str == "*" || str == "/";
+    }
+
 }
+
+
 
 
 
@@ -29,15 +71,15 @@ public class Token
 {
     public enum TokenType
     {
-        Number, 
-        Operator, 
+        Number,
+        Operator,
         Parenthesis
     }
 
     public TokenType Type { get; }
     public int Value { get; }
-    public char Operator { get; }
-    public static Dictionary<char, int> Precedence = new Dictionary<char, int>
+    public char MathOperator { get; }
+    public static Dictionary<char, int> MathPrecedence = new Dictionary<char, int>
     {
         {'+', 1},
         {'-', 1},
@@ -47,16 +89,18 @@ public class Token
         {'(', 0},
     };
 
-    private Token(TokenType type, int value, char op)
+    private Token(TokenType type, int value = 0, char op = '\0')
     {
-        Type = type; Value = value; Operator = op;
+        Type = type;
+        Value = value;
+        MathOperator = op;
     }
 
-    public static Token Number(int value) => new Token(TokenType.Number, value);
+    public static Token Number(int value) => new Token(TokenType.Number, value, '\0');
     public static Token Operator(char op) => new Token(TokenType.Operator, 0, op);
     public static Token Parenthesis(char op) => new Token(TokenType.Parenthesis, 0, op);
 
-    public int Precedence => Type == TokenType.Operator ? Precedence.TryGetValue(Operator, out int precedence) ? precedence : 0 : 0;
+    public int Precedence => Type == TokenType.Operator ? MathPrecedence.TryGetValue(MathOperator, out int precedence) ? precedence : 0 : 0;
 
 
 }
@@ -106,13 +150,13 @@ public class Pratt
                     operatorStack.Push(token);
                     break;
                 case Token.TokenType.Parenthesis:
-                    if (token.Operator == '(')
+                    if (token.MathOperator == '(')
                     {
                         operatorStack.Push(token);
                     }
                     else
                     {
-                        while (operatorStack.Peek().Operator != '(')
+                        while (operatorStack.Peek().MathOperator != '(')
                         {
                             outputQueue.Enqueue(operatorStack.Pop());
                         }
@@ -130,7 +174,7 @@ public class Pratt
 
         return outputQueue;
     }
-        
+
 }
 
 
@@ -153,7 +197,7 @@ public class Evaluator
         {
             var token = tokens.Dequeue();
 
-            if (token.IsNumber)
+            if (token.Type == Token.TokenType.Number)
             {
                 stack.Push(token);
             }
@@ -161,7 +205,7 @@ public class Evaluator
             {
                 int right = stack.Pop().Value;
                 int left = stack.Pop().Value;
-                int result = token.Operator switch
+                int result = token.MathOperator switch
                 {
                     '+' => left + right,
                     '-' => left - right,
@@ -169,8 +213,8 @@ public class Evaluator
                     '/' => left / right,
                     _ => 0
                 };
-                stack.Push(new Token(result));
-              
+                stack.Push(Token.Number(result));
+
             }
         }
 
@@ -218,31 +262,4 @@ public class Tokenizer
 
 
 
-// convert queue with string to tokens (adaptation of Tokenizer)
-static Queue<Token> Converter(Queue<string> tokenized)
-{
-    var tokens = new Queue<Token>();
-    while (!tokenized.IsEmpty())
-    {
-        var str = tokenized.Dequeue();
-        if (int.TryParse(str, out int number))
-        {
-            tokens.Enqueue(Token.Number(number));
-        }
-        else if (IsOperator(str))
-        {
-            tokens.Enqueue(Token.Operator(str[0]));
-        }
-        else if (str == "(" || str == ")")
-        {
-            tokens.Enqueue(Token.Parenthesis(str[0]));
-        }
-    }
-    return tokens;
-}
-
-static bool IsOperator(string str)
-{
-    return str == "+" || str == "-" || str == "*" || str == "/";
-}
 
