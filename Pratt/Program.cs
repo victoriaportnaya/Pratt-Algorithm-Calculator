@@ -51,6 +51,64 @@ public class Node
     }
 }
 
-// observe syntax tree and parse 
+// observe syntax tree and rpnize
+public class Pratt
+{
+    private Queue<Token> tokens;
+    
+    public Rpnizer(Queue<Token> tokens)
+    {
+        this.tokens = tokens;
+    }
+
+    public Node Parse()
+    {
+        return ParseExpression(0);
+    }
+
+    private Node ParseExpression(int precedence)
+    {
+        Token token = tokens.Dequeue();
+
+        Node left = null;
+        if (token.Type == Token.TokenType.Number)
+        {
+            left = new Node(token);
+        }
+        
+        else if (token.Type == Token.TokenType.Parenthesis && token.Operator == '(')
+        {
+            left = ParseExpression(0);
+            Expect(')');
+        }
+
+        while (tokens.Count > 0 && precedence < tokens.Peek().Precedence)
+        {
+            token = tokens.Dequeue();
+
+            if (token.Type == Token.TokenType.Operator)
+            {
+                var right = ParseExpression(token.Precedence);
+                var parent = new Node(token) { Left = left, Right = right };
+                left = parent;
+            }
+        }
+
+        return left;
+    
+    
+    private void Expect(char expected)
+        {
+            if (tokens.Count > 0) || (tokens.Peek().Type != Token.TokenType.Parenthesis || tokens.Peek().Operator != expected))
+                    {
+                throw new InvalidOperationException(&"Expected '{expected}'");
+            }
+            tokens.Dequeue();
+
+        }
+
+    }
+}
+
 
 // evaluator 
