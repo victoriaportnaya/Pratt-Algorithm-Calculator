@@ -219,7 +219,7 @@ public class Tokenizer
 
 
 // convert queue with string to tokens (adaptation of Tokenizer)
-private static Queue<Token> Converter(Queue<string> tokenized)
+static Queue<Token> Converter(Queue<string> tokenized)
 {
     var tokens = new Queue<Token>();
     while (!tokenized.IsEmpty())
@@ -241,7 +241,7 @@ private static Queue<Token> Converter(Queue<string> tokenized)
     return tokens;
 }
 
-private static bool IsOperator(string str)
+static bool IsOperator(string str)
 {
     return str == "+" || str == "-" || str == "*" || str == "/";
 }
