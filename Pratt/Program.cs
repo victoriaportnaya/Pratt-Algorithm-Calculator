@@ -1,6 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 
+// perform programme
+public class TryCalculate
+{
+    public static void Main()
+    {
+        var tokens = new Queue<Token>();
+        var evaluator = new Evaluator(tokens);
+        var result = evaluator.Calculator();
+
+        Console.WriteLine(result);
+    }
+}
+
+
 // set token types and precedences 
 public class Token
 {
@@ -152,4 +166,3 @@ public class Evaluator
         return stack.Pop().Value;
     }
 }
-
