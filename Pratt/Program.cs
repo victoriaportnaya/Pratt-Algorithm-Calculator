@@ -1,18 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 
+
+
 // perform programme
 public class TryCalculate
 {
     public static void Main()
-    {
-        var tokens = new Queue<Token>();
-        var evaluator = new Evaluator(tokens);
+    {   
+        string expression = Console.ReadLine();
+        var tokenized = Tokenizer.Tokenize(expression);
+        var tokens = Converter(tokenized);
+
+        var pratt = new Pratt(tokens);
+        var rpnized = pratt.ToRPN();
+
+        var evaluator = new Evaluator(rpnized);
         var result = evaluator.Calculator();
 
         Console.WriteLine(result);
     }
 }
+
 
 
 // set token types and precedences 
@@ -69,60 +78,62 @@ public class Node
 public class Pratt
 {
     private Queue<Token> tokens;
-    
-    public Rpnizer(Queue<Token> tokens)
+
+    public Pratt(Queue<Token> tokens)
     {
         this.tokens = tokens;
     }
 
-    public Node Parse()
+    public Queue<Token> ToRPN()
     {
-        return ParseExpression(0);
-    }
+        var outputQueue = new Queue<Token>();
+        var operatorStack = new Stack<Token>();
 
-    private Node ParseExpression(int precedence)
-    {
-        Token token = tokens.Dequeue();
-
-        Node left = null;
-        if (token.Type == Token.TokenType.Number)
+        while (tokens.Count > 0)
         {
-            left = new Node(token);
-        }
-        
-        else if (token.Type == Token.TokenType.Parenthesis && token.Operator == '(')
-        {
-            left = ParseExpression(0);
-            Expect(')');
-        }
+            var token = tokens.Dequeue();
 
-        while (tokens.Count > 0 && precedence < tokens.Peek().Precedence)
-        {
-            token = tokens.Dequeue();
-
-            if (token.Type == Token.TokenType.Operator)
+            switch (token.Type)
             {
-                var right = ParseExpression(token.Precedence);
-                var parent = new Node(token) { Left = left, Right = right };
-                left = parent;
-            }
-        }
-
-        return left;
-    
-    
-    private void Expect(char expected)
-        {
-            if (tokens.Count > 0) || (tokens.Peek().Type != Token.TokenType.Parenthesis || tokens.Peek().Operator != expected))
+                case Token.TokenType.Number:
+                    outputQueue.Enqueue(token);
+                    break;
+                case Token.TokenType.Operator:
+                    while (operatorStack.Count > 0 && operatorStack.Peek().Type != Token.TokenType.Parenthesis && operatorStack.Peek().Precedence >= token.Precedence)
                     {
-                throw new InvalidOperationException(&"Expected '{expected}'");
+                        outputQueue.Enqueue(operatorStack.Pop());
+                    }
+                    operatorStack.Push(token);
+                    break;
+                case Token.TokenType.Parenthesis:
+                    if (token.Operator == '(')
+                    {
+                        operatorStack.Push(token);
+                    }
+                    else
+                    {
+                        while (operatorStack.Peek().Operator != '(')
+                        {
+                            outputQueue.Enqueue(operatorStack.Pop());
+                        }
+                        operatorStack.Pop();
+                    }
+                    break;
             }
-            tokens.Dequeue();
 
         }
 
+        while (operatorStack.Count > 0)
+        {
+            outputQueue.Enqueue(operatorStack.Pop());
+        }
+
+        return outputQueue;
     }
+        
 }
+
+
 
 // evaluator 
 public class Evaluator
@@ -166,3 +177,72 @@ public class Evaluator
         return stack.Pop().Value;
     }
 }
+
+
+// tokenizer
+public class Tokenizer
+{
+    public static HashSet<char> Operators = new HashSet<char> { '+', '-', '*', '/', ')', '(' };
+
+    public static Queue<string> Tokenize(string expression)
+    {
+        Queue<string> tokens = new Queue<string>();
+        StringBuilder currentToken = new StringBuilder();
+
+        foreach (char c in expression)
+        {
+            if (Operators.Contains(c))
+            {
+                if (currentToken.Length > 0)
+                {
+                    tokens.Enqueue(currentToken.ToString());
+                    currentToken.Clear();
+                }
+                tokens.Enqueue(c.ToString());
+            }
+
+            else if (!char.IsWhiteSpace(c))
+            {
+                currentToken.Append(c);
+            }
+        }
+        if (currentToken.Length > 0)
+        {
+            tokens.Enqueue(currentToken.ToString());
+        }
+
+        return tokens;
+
+    }
+}
+
+
+
+// convert queue with string to tokens (adaptation of Tokenizer)
+private static Queue<Token> Converter(Queue<string> tokenized)
+{
+    var tokens = new Queue<Token>();
+    while (!tokenized.IsEmpty())
+    {
+        var str = tokenized.Dequeue();
+        if (int.TryParse(str, out int number))
+        {
+            tokens.Enqueue(Token.Number(number));
+        }
+        else if (IsOperator(str))
+        {
+            tokens.Enqueue(Token.Operator(str[0]));
+        }
+        else if (str == "(" || str == ")")
+        {
+            tokens.Enqueue(Token.Parenthesis(str[0]));
+        }
+    }
+    return tokens;
+}
+
+private static bool IsOperator(string str)
+{
+    return str == "+" || str == "-" || str == "*" || str == "/";
+}
+
