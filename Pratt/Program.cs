@@ -39,6 +39,17 @@ public class Token
 }
 
 // nodes for graph 
+public class Node
+{
+    public Token Token;
+    public Node Left;
+    public Node Right;
+
+    public Node(Token token)
+    {
+        Token = token;
+    }
+}
 
 // observe syntax tree and parse 
 
