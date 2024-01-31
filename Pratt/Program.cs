@@ -17,11 +17,11 @@ public class Token
     public static Dictionary<char, int> Precedence = new Dictionary<char, int>
     {
         {'+', 1},
-        {"-", 1},
-        {"*", 2},
-        {"/", 2},
-        {")", 0},
-        {"(", 0},
+        {'-', 1},
+        {'*', 2},
+        {'/', 2},
+        {')', 0},
+        {'(', 0},
     };
 
     private Token(TokenType type, int value, char op)
@@ -110,5 +110,46 @@ public class Pratt
     }
 }
 
-
 // evaluator 
+public class Evaluator
+{
+    private Queue<Token> tokens;
+
+    public Evaluator(Queue<Token> tokens)
+    {
+        this.tokens = tokens;
+    }
+
+    public int Calculator()
+    {
+        var stack = new Stack<Token>();
+
+        while (tokens.Count > 0)
+        {
+            var token = tokens.Dequeue();
+
+            if (token.IsNumber)
+            {
+                stack.Push(token);
+            }
+            else
+            {
+                int right = stack.Pop().Value;
+                int left = stack.Pop().Value;
+                int result = token.Operator switch
+                {
+                    '+' => left + right,
+                    '-' => left - right,
+                    '*' => left * right,
+                    '/' => left / right,
+                    _ => 0
+                };
+                stack.Push(new Token(result));
+              
+            }
+        }
+
+        return stack.Pop().Value;
+    }
+}
+
