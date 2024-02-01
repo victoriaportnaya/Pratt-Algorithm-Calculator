@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Text;
 
 // perform programme
@@ -15,7 +16,7 @@ public class TryCalculate
 
         var parser = new Parser(tokens);
         var ast = parser.ParseExpression();
-        
+
         var result = ast.Evaluate();
         Console.WriteLine();
         Console.WriteLine(result);
@@ -33,7 +34,7 @@ public class TryCalculate
             }
             else if (IsOperator(str))
             {
-                int precedence = str == "+" || str == "-" ? Precedence.Sum : Precedence.Product;
+                int precedence = GetOperatorPrecedence(str);
                 tokens.Enqueue(Token.Operator(str[0], precedence));
             }
             else if (str == "(" || str == ")")
@@ -66,7 +67,16 @@ public class TryCalculate
 // set token 
 public abstract class Token
 {
-    public virtual int Precedence { get; }
+    public virtual int Precedence { get; private set; }
+
+    protected Token(int precedence = 0)
+    {
+        Precedence = precedence;
+    }
+
+    public static Token Number(int value) => new NumberToken(value);
+    public static Token Operator(char op, int precedence) => new OperatorToken(op, precedence);
+    public static Token Parenthesis(char parenthesis) => new ParenthesisToken(parenthesis);
 
 }
 
@@ -84,13 +94,12 @@ public class NumberToken : Token
 
 public class OperatorToken : Token
 {
-   public char Operator { get; private set; }
-   
+    public char Operator { get; private set; }
 
-   public OperatorToken(char op, int precedence)
+
+    public OperatorToken(char op, int precedence) : base(precedence)
     {
         Operator = op;
-        Precedence = precedence;
     }
 }
 
@@ -107,7 +116,7 @@ public class ParenthesisToken : Token
 public class Parser
 {
     private Queue<Token> tokens;
-    private Token currentToken;
+    private Token? currentToken;
 
     public Parser(Queue<Token> tokens)
     {
@@ -122,13 +131,15 @@ public class Parser
 
     public Node ParseExpression(int precedence = 0)
     {
-        Token token = currentToken;
+        if (currentToken == null)
+            throw new EvaluateException("Unexpected end of the expression!");
+
+        Node left = ParsePrimary(currentToken);
         Advance();
-        Node left = ParsePrimary(token);
 
         while (currentToken != null && precedence < currentToken.Precedence)
         {
-            token = currentToken;
+            Token token = currentToken;
             Advance();
             left = ParseBinary(left, token);
         }
@@ -138,15 +149,17 @@ public class Parser
 
     Node ParsePrimary(Token token)
     {
-        if (token is NumberToken numbertoken)
+
+        if (token is NumberToken numberToken)
         {
-            return new NumberNode(NumberToken.Value);
+            return new NumberNode(numberToken.Value);
         }
 
         else if (token is ParenthesisToken parenthesisToken && parenthesisToken.Parenthesis == '(')
         {
+            Advance();
             Node node = ParseExpression();
-            if (currentToken is ParenthesisToken && currentToken.Parenthesis == ")")
+            if (currentToken is ParenthesisToken pt && pt.Parenthesis == ')')
             {
                 Advance();
                 return node;
@@ -162,9 +175,9 @@ public class Parser
     Node ParseBinary(Node left, Token token)
     {
         if (token is OperatorToken opToken)
-        {   
+        {
             int precedent = opToken.Precedence;
-            Node right = ParseExpression(precedence + 1);
+            Node right = ParseExpression(opToken.Precedence);
             return new BinaryOperationNode(left, right, opToken.Operator);
         }
         throw new Exception("Invalid operator!");
@@ -205,16 +218,26 @@ public class BinaryOperationNode : Node
         this.op = op;
     }
 
-    public override int Evaluate() 
+    public override int Evaluate()
     {
         return op switch
         {
             '+' => left.Evaluate() + right.Evaluate(),
             '-' => left.Evaluate() - right.Evaluate(),
             '*' => left.Evaluate() * right.Evaluate(),
-            '/' => left.Evaluate() / right.Evaluate(),
+            '/' => Division(left.Evaluate(), right.Evaluate()),
             _ => throw new InvalidOperationException("Unsupported operator!")
-        }; 
+        };
+    }
+
+    private static int Division(int left, int right)
+    {
+        if (right == 0)
+        {
+            throw new Exception("Cannot divide by zero!");
+        }
+
+        return left / right;
     }
 }
 
