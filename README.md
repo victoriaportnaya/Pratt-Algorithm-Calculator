@@ -7,3 +7,5 @@ In the work I used the following sources to grasp the idea of the given algorith
 4) https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
 5) https://www.oilshell.org/blog/2016/11/01.html
 
+Also, I was assisted by C By E.G. KASTANIDIS in drawing Abstract Syntax Tree.
+
