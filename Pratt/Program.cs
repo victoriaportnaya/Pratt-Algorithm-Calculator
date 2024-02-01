@@ -49,12 +49,28 @@ public class TryCalculate
         return str == "+" || str == "-" || str == "*" || str == "/";
     }
 
+    static int GetOperatorPrecedence(string op)
+    {
+        return op switch
+        {
+            "+" => Precedence.Sum,
+            "-" => Precedence.Sum,
+            "*" => Precedence.Product,
+            "/" => Precedence.Product,
+            _ => 0,
+        };
+    }
+
 }
 
 // set token 
 public abstract class Token
 {
-   public virtual int Precedence => 0;
+   public virtual int Precedence { get; }
+
+    public static Token Number(int value) => new NumberToken { Value = value };
+    public static Token Operator(char op, int precedence) => new OperatorToken { Operator = op, Precedence = precedence };
+    public static Token Parenthesis(char parethesis) => new ParenthesisToken { Parenthesis = parethesis };
 }
 
 
@@ -72,8 +88,8 @@ public class NumberToken : Token
 
 public class OperatorToken : Token
 {
-   public char Operator { get; }
-   public override int Precedence { get; }
+   public char Operator { get; private set; }
+   
 
    public OperatorToken(char op, int precedence)
     {
@@ -84,7 +100,7 @@ public class OperatorToken : Token
 
 public class ParenthesisToken : Token
 {
-    public char Parenthesis { get; }
+    public char Parenthesis { get; private set; }
     public ParenthesisToken(char parenthesis)
     {
         Parenthesis = parenthesis;
@@ -121,6 +137,7 @@ public class Parser
             left = ParseBinary(left, token);
         }
 
+        return left;
     }
 
     Node ParsePrimary(Token token)
@@ -149,8 +166,9 @@ public class Parser
     Node ParseBinary(Node left, Token token)
     {
         if (token is OperatorToken opToken)
-        {
-            Node right = ParseExpression(opToken.Precedence);
+        {   
+            int precedent = opToken.Precedence;
+            Node right = ParseExpression(precedence + 1);
             return new BinaryOperationNode(left, right, opToken.Operator);
         }
         throw new Exception("Invalid operator!");
@@ -243,6 +261,12 @@ public class Tokenizer
         return tokens;
 
     }
+}
+
+public static class Precedence
+{
+    public const int Sum = 1;
+    public const int Product = 2;
 }
 
 
