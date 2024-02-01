@@ -9,26 +9,14 @@ public class TryCalculate
     {
         Console.WriteLine("Type your expression >>");
         string expression = Console.ReadLine() ?? string.Empty;
-        var tokenized = Tokenizer.Tokenize(expression);
-        var tokens = Convert(tokenized);
 
-        var pratt = new Pratt(tokens);
-        var rpnized = pratt.ToRPN();
-        // print RPN
-        foreach (var token in rpnized)
-        {
-            if (token.Type == Token.TokenType.Number)
-            {
-                Console.Write(token.Value);
-            }
-            else if (token.Type == Token.TokenType.Operator || token.Type == Token.TokenType.Parenthesis)
-            {
-                Console.Write(token.MathOperator);
-            }
-        }
+        Queue<string> tokenized = Tokenizer.Tokenize(expression);
+        Queue<Token> tokens = Convert(tokenized);
 
-        var evaluator = new Evaluator(rpnized);
-        var result = evaluator.Calculator();
+        var parser = new Parser(tokens);
+        var ast = parser.ParseExpression();
+        
+        var result = ast.Evaluate();
         Console.WriteLine();
         Console.WriteLine(result);
     }
@@ -45,7 +33,8 @@ public class TryCalculate
             }
             else if (IsOperator(str))
             {
-                tokens.Enqueue(Token.Operator(str[0]));
+                int precedence = str == "+" || str == "-" ? Precedence.Sum : Precedence.Product;
+                tokens.Enqueue(Token.Operator(str[0], precedence));
             }
             else if (str == "(" || str == ")")
             {
@@ -62,88 +51,46 @@ public class TryCalculate
 
 }
 
-
-public static class Precedence
+// set token 
+public abstract class Token
 {
-    public const int Lowest = 0;
-    public const int Sum = 10;
-    public const int Product = 20;
-    public const int Prefix = 30;
+   public virtual int Precedence => 0;
 }
+
 
 public class NumberToken : Token
 {
-    public override Node Parse(Parser parse, Token token)
+    public int Value { get; private set; }
+
+    public NumberToken(int value)
     {
-        return new NumberNode(this.Value);
+        Value = value;
     }
 
-    public override int Precendece => 0;
 }
 
-public class LeftParenthesisToken : Token
-{
-    public override Node Parse(Parser parse, Token token)
-    {
-        var expression = parser.ParseExpression();
-        parser.Consume(TokenType.RightParenthesis);
-        return expression;
-    }
-
-    public override int Precedence => 0;
-}
 
 public class OperatorToken : Token
 {
-    public OperatorToken(char operatorChar)
-    {
-        this.MathOperator = operatorChar;
-    }
+   public char Operator { get; }
+   public override int Precedence { get; }
 
-    public override Node Parse(Parser parser, Token left)
+   public OperatorToken(char op, int precedence)
     {
-        var right = parser.ParseExpression(this.Precedence);
-        return new BinaryOperationNode(left, right, this.MathOperator);
-    }
-
-    public override int Precedence
-    {
-        get
-        {
-            return MathOperator switch
-            {
-                '+' => Precedence.Sum,
-                '-' => Precedence.Sum,
-                '*' => Precedence.Product,
-                '/' => Precedence.Product,
-                _ => Precedence.Lowest,
-            };
-        }
+        Operator = op;
+        Precedence = precedence;
     }
 }
 
-
-
-
-// set token types and precedences 
-public abstract class Token
+public class ParenthesisToken : Token
 {
-    public abstract Node Parse(Parser parse, Token token);
-    public abstract int Precedence { get; }
-}
-
-// nodes for graph 
-public class Node
-{
-    public Token Token;
-    public Node Left;
-    public Node Right;
-
-    public Node(Token token)
+    public char Parenthesis { get; }
+    public ParenthesisToken(char parenthesis)
     {
-        Token = token;
+        Parenthesis = parenthesis;
     }
 }
+
 
 public class Parser
 {
@@ -153,35 +100,64 @@ public class Parser
     public Parser(Queue<Token> tokens)
     {
         this.tokens = tokens;
-        NextToken();
+        Advance();
     }
 
-    public void NextToken()
+    public void Advance()
     {
         currentToken = tokens.Count > 0 ? tokens.Dequeue() : null;
     }
 
-    public Node ParseExpression(int rightBindingPiwer = 0)
+    public Node ParseExpression(int precedence = 0)
     {
         Token token = currentToken;
-        NextToken();
-        if (token == null)
-            throw new Exception("End of input cannot be handled");
+        Advance();
+        Node left = ParsePrimary(token);
 
-        Node left = token.Parse(this, left);
-
-        while (rightBindingPiwer < currentToken.Precedence)
+        while (currentToken != null && precedence < currentToken.Precedence)
         {
             token = currentToken;
-            NextToken();
-            left = token.Parse(this, left);
+            Advance();
+            left = ParseBinary(left, token);
         }
 
-        return left;
+    }
+}
+
+Node ParsePrimary(Token token)
+{
+    if (token is NumberToken numbertoken)
+    {
+        return new NumberNode(NumberToken.Value);
     }
 
-   
+    else if (token is ParenthesisToken && token.Parenthesis == '(')
+    {
+        Node node = ParseExpression();
+        if (currentToken is ParenthesisToken && currentToken.Parenthesis == ")")
+        {
+            Advance();
+            return node;
+        }
+        else
+        {
+            throw new Exception("Not closed paretheses!");
+        }
+    }
+    throw new Exception("Unexpected token!");
 }
+
+Node ParseBinary(Node left, Token token)
+{
+    if (token is OperatorToken opToken)
+    {
+        Node right = ParseExpression(opToken.Precedence);
+        return new BinaryOperationNode(left, right, opToken.Operator);
+    }
+    throw new Exception("Invalid operator!");
+}
+
+
 
 public abstract class Node
 {
@@ -192,10 +168,11 @@ public class NumberNode : Node
 {
     private int value;
 
-    publuc NumberNode(int value)
+    public NumberNode(int value)
     {
         this.value = value;
     }
+
     public override int Evaluate() => value;
 }
 
@@ -203,64 +180,29 @@ public class BinaryOperationNode : Node
 {
     private Node left;
     private Node right;
-    private Func<int, int, int> operation;
+    private char op;
 
-    public BinaryOperationNode(Node left, Node right, Func<int, int, int> operation)
+    public BinaryOperationNode(Node left, Node right, char op)
     {
         this.left = left;
         this.right = right;
-        this.operation = operation;
+        this.op = op;
     }
 
-    public override int Evaluate() => operation(left.Evaluate(), right.Evaluate());
-}
-
-
-
-
-
-// evaluator 
-public class Evaluator
-{
-    private Queue<Token> tokens;
-
-    public Evaluator(Queue<Token> tokens)
+    public override int Evaluate() 
     {
-        this.tokens = tokens;
-    }
-
-    public int Calculator()
-    {
-        var stack = new Stack<Token>();
-
-        while (tokens.Count > 0)
+        return op switch
         {
-            var token = tokens.Dequeue();
-
-            if (token.Type == Token.TokenType.Number)
-            {
-                stack.Push(token);
-            }
-            else
-            {
-                int right = stack.Pop().Value;
-                int left = stack.Pop().Value;
-                int result = token.MathOperator switch
-                {
-                    '+' => left + right,
-                    '-' => left - right,
-                    '*' => left * right,
-                    '/' => left / right,
-                    _ => 0
-                };
-                stack.Push(Token.Number(result));
-
-            }
-        }
-
-        return stack.Pop().Value;
+            '+' => left.Evaluate() + right.Evaluate(),
+            '-' => left.Evaluate() - right.Evaluate(),
+            '*' => left.Evaluate() * right.Evaluate(),
+            '/' => left.Evaluate() / right.Evaluate(),
+            _ => throw new InvalidOperationException("Unsupported operator!")
+        }; 
     }
 }
+
+
 
 
 // tokenizer
