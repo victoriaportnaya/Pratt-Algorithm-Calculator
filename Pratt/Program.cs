@@ -19,7 +19,9 @@ public class TryCalculate
 
         var result = ast.Evaluate();
         Console.WriteLine();
-        Console.WriteLine(result);
+        Console.WriteLine($"The result: {result}");
+        Console.WriteLine("Abstract Syntax Tree");
+        ast.PrintTree("", true);
     }
 
     static Queue<Token> Convert(Queue<string> tokenized)
@@ -191,6 +193,7 @@ public class Parser
 public abstract class Node
 {
     public abstract int Evaluate();
+    public abstract void PrintTree(string indent, bool last);
 }
 
 public class NumberNode : Node
@@ -203,6 +206,11 @@ public class NumberNode : Node
     }
 
     public override int Evaluate() => value;
+
+    public override void PrintTree(string indent, bool last)
+    {
+        Console.WriteLine(indent + (last ? "└─" : "├─") + value);
+    }
 }
 
 public class BinaryOperationNode : Node
@@ -238,6 +246,13 @@ public class BinaryOperationNode : Node
         }
 
         return left / right;
+    }
+
+    public override void PrintTree(string indent, bool last)
+    {
+        Console.WriteLine(indent + (last ? "└─" : "├─") + op);
+        left.PrintTree(indent + (last ? "  " : "|"), false);
+        right.PrintTree(indent + (last ? "  " : "|"), true);
     }
 }
 
