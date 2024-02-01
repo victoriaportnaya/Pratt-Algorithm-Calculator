@@ -66,13 +66,9 @@ public class TryCalculate
 // set token 
 public abstract class Token
 {
-   public virtual int Precedence { get; }
+    public virtual int Precedence { get; }
 
-    public static Token Number(int value) => new NumberToken { Value = value };
-    public static Token Operator(char op, int precedence) => new OperatorToken { Operator = op, Precedence = precedence };
-    public static Token Parenthesis(char parethesis) => new ParenthesisToken { Parenthesis = parethesis };
 }
-
 
 public class NumberToken : Token
 {
