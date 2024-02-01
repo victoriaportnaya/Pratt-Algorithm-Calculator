@@ -71,6 +71,15 @@ public static class Precedence
     public const int Prefix = 30;
 }
 
+public class NumberToken : Tojen
+{
+    public override Node Parse(Parser parse, Token token)
+    {
+        return new NumberNode(this.Value);
+    }
+
+    public override int Precendece => 0;
+}
 
 
 // set token types and precedences 
