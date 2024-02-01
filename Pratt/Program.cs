@@ -67,42 +67,10 @@ public class TryCalculate
 
 
 // set token types and precedences 
-public class Token
+public abstract class Token
 {
-    public enum TokenType
-    {
-        Number,
-        Operator,
-        Parenthesis
-    }
-
-    public TokenType Type { get; }
-    public int Value { get; }
-    public char MathOperator { get; }
-    public static Dictionary<char, int> MathPrecedence = new Dictionary<char, int>
-    {
-        {'+', 1},
-        {'-', 1},
-        {'*', 2},
-        {'/', 2},
-        {')', 0},
-        {'(', 0},
-    };
-
-    private Token(TokenType type, int value = 0, char op = '\0')
-    {
-        Type = type;
-        Value = value;
-        MathOperator = op;
-    }
-
-    public static Token Number(int value) => new Token(TokenType.Number, value, '\0');
-    public static Token Operator(char op) => new Token(TokenType.Operator, 0, op);
-    public static Token Parenthesis(char op) => new Token(TokenType.Parenthesis, 0, op);
-
-    public int Precedence => Type == TokenType.Operator ? MathPrecedence.TryGetValue(MathOperator, out int precedence) ? precedence : 0 : 0;
-
-
+    public abstract Node Parse(Parser parse, Token token);
+    public abstract int Precedence { get; }
 }
 
 // nodes for graph 
@@ -118,6 +86,43 @@ public class Node
     }
 }
 
+public class Parser
+{
+    private Queue<Token> tokens;
+    private Token currentToken;
+
+    public Parser(Queue<Token> tokens)
+    {
+        this.tokens = tokens;
+        NextToken();
+    }
+
+    public void NextToken()
+    {
+        currentToken = tokens.Count > 0 ? tokens.Dequeue() : null;
+    }
+
+    public Node ParseExpression(int rightBindingPiwer = 0)
+    {
+        Token token = currentToken;
+        NextToken();
+        if (token == null)
+            throw new Exception("End of input cannot be handled");
+
+        Node left = token.Parse(this, left);
+
+        while (rightBindingPiwer < currentToken.Precedence)
+        {
+            token = currentToken;
+            NextToken();
+            left = token.Parse(this, left);
+        }
+
+        return left;
+    }
+
+   
+}
 // observe syntax tree and rpnize
 public class Pratt
 {
