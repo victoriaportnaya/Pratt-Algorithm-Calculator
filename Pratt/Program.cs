@@ -122,40 +122,42 @@ public class Parser
         }
 
     }
-}
 
-Node ParsePrimary(Token token)
-{
-    if (token is NumberToken numbertoken)
+    Node ParsePrimary(Token token)
     {
-        return new NumberNode(NumberToken.Value);
-    }
-
-    else if (token is ParenthesisToken && token.Parenthesis == '(')
-    {
-        Node node = ParseExpression();
-        if (currentToken is ParenthesisToken && currentToken.Parenthesis == ")")
+        if (token is NumberToken numbertoken)
         {
-            Advance();
-            return node;
+            return new NumberNode(NumberToken.Value);
         }
-        else
+
+        else if (token is ParenthesisToken parenthesisToken && parenthesisToken.Parenthesis == '(')
         {
-            throw new Exception("Not closed paretheses!");
+            Node node = ParseExpression();
+            if (currentToken is ParenthesisToken && currentToken.Parenthesis == ")")
+            {
+                Advance();
+                return node;
+            }
+            else
+            {
+                throw new Exception("Not closed paretheses!");
+            }
         }
+        throw new Exception("Unexpected token!");
     }
-    throw new Exception("Unexpected token!");
+
+    Node ParseBinary(Node left, Token token)
+    {
+        if (token is OperatorToken opToken)
+        {
+            Node right = ParseExpression(opToken.Precedence);
+            return new BinaryOperationNode(left, right, opToken.Operator);
+        }
+        throw new Exception("Invalid operator!");
+    }
+
 }
 
-Node ParseBinary(Node left, Token token)
-{
-    if (token is OperatorToken opToken)
-    {
-        Node right = ParseExpression(opToken.Precedence);
-        return new BinaryOperationNode(left, right, opToken.Operator);
-    }
-    throw new Exception("Invalid operator!");
-}
 
 
 
@@ -201,6 +203,7 @@ public class BinaryOperationNode : Node
         }; 
     }
 }
+
 
 
 
