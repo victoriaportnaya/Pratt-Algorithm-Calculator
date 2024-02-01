@@ -71,7 +71,7 @@ public static class Precedence
     public const int Prefix = 30;
 }
 
-public class NumberToken : Tojen
+public class NumberToken : Token
 {
     public override Node Parse(Parser parse, Token token)
     {
@@ -80,6 +80,49 @@ public class NumberToken : Tojen
 
     public override int Precendece => 0;
 }
+
+public class LeftParenthesisToken : Token
+{
+    public override Node Parse(Parser parse, Token token)
+    {
+        var expression = parser.ParseExpression();
+        parser.Consume(TokenType.RightParenthesis);
+        return expression;
+    }
+
+    public override int Precedence => 0;
+}
+
+public class OperatorToken : Token
+{
+    public OperatorToken(char operatorChar)
+    {
+        this.MathOperator = operatorChar;
+    }
+
+    public override Node Parse(Parser parser, Token left)
+    {
+        var right = parser.ParseExpression(this.Precedence);
+        return new BinaryOperationNode(left, right, this.MathOperator);
+    }
+
+    public override int Precedence
+    {
+        get
+        {
+            return MathOperator switch
+            {
+                '+' => Precedence.Sum,
+                '-' => Precedence.Sum,
+                '*' => Precedence.Product,
+                '/' => Precedence.Product,
+                _ => Precedence.Lowest,
+            };
+        }
+    }
+}
+
+
 
 
 // set token types and precedences 
