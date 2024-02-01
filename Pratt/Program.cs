@@ -63,6 +63,13 @@ public class TryCalculate
 }
 
 
+public static class Precedence
+{
+    public const int Lowest = 0;
+    public const int Sum = 10;
+    public const int Product = 20;
+    public const int Prefix = 30;
+}
 
 
 
@@ -123,64 +130,40 @@ public class Parser
 
    
 }
-// observe syntax tree and rpnize
-public class Pratt
+
+public abstract class Node
 {
-    private Queue<Token> tokens;
-
-    public Pratt(Queue<Token> tokens)
-    {
-        this.tokens = tokens;
-    }
-
-    public Queue<Token> ToRPN()
-    {
-        var outputQueue = new Queue<Token>();
-        var operatorStack = new Stack<Token>();
-
-        while (tokens.Count > 0)
-        {
-            var token = tokens.Dequeue();
-
-            switch (token.Type)
-            {
-                case Token.TokenType.Number:
-                    outputQueue.Enqueue(token);
-                    break;
-                case Token.TokenType.Operator:
-                    while (operatorStack.Count > 0 && operatorStack.Peek().Type != Token.TokenType.Parenthesis && operatorStack.Peek().Precedence >= token.Precedence)
-                    {
-                        outputQueue.Enqueue(operatorStack.Pop());
-                    }
-                    operatorStack.Push(token);
-                    break;
-                case Token.TokenType.Parenthesis:
-                    if (token.MathOperator == '(')
-                    {
-                        operatorStack.Push(token);
-                    }
-                    else
-                    {
-                        while (operatorStack.Peek().MathOperator != '(')
-                        {
-                            outputQueue.Enqueue(operatorStack.Pop());
-                        }
-                        operatorStack.Pop();
-                    }
-                    break;
-            }
-
-        }
-
-        while (operatorStack.Count > 0)
-        {
-            outputQueue.Enqueue(operatorStack.Pop());
-        }
-
-        return outputQueue;
-    }
-
+    public abstract int Evaluate();
 }
+
+public class NumberNode : Node
+{
+    private int value;
+
+    publuc NumberNode(int value)
+    {
+        this.value = value;
+    }
+    public override int Evaluate() => value;
+}
+
+public class BinaryOperationNode : Node
+{
+    private Node left;
+    private Node right;
+    private Func<int, int, int> operation;
+
+    public BinaryOperationNode(Node left, Node right, Func<int, int, int> operation)
+    {
+        this.left = left;
+        this.right = right;
+        this.operation = operation;
+    }
+
+    public override int Evaluate() => operation(left.Evaluate(), right.Evaluate());
+}
+
+
 
 
 
