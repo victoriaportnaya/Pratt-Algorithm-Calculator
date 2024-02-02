@@ -30,7 +30,7 @@ public class TryCalculate
         while (tokenized.Count > 0)
         {
             var str = tokenized.Dequeue();
-            if (int.TryParse(str, out int number))
+            if (double.TryParse(str, out double number))
             {
                 tokens.Enqueue(Token.Number(number));
             }
@@ -76,7 +76,7 @@ public abstract class Token
         Precedence = precedence;
     }
 
-    public static Token Number(int value) => new NumberToken(value);
+    public static Token Number(double value) => new NumberToken(value);
     public static Token Operator(char op, int precedence) => new OperatorToken(op, precedence);
     public static Token Parenthesis(char parenthesis) => new ParenthesisToken(parenthesis);
 
@@ -84,9 +84,9 @@ public abstract class Token
 
 public class NumberToken : Token
 {
-    public int Value { get; private set; }
+    public double Value { get; private set; }
 
-    public NumberToken(int value)
+    public NumberToken(double value)
     {
         Value = value;
     }
@@ -178,7 +178,7 @@ public class Parser
     {
         if (token is OperatorToken opToken)
         {
-            int precedent = opToken.Precedence;
+            int precedence = opToken.Precedence;
             Node right = ParseExpression(opToken.Precedence);
             return new BinaryOperationNode(left, right, opToken.Operator);
         }
@@ -192,20 +192,20 @@ public class Parser
 
 public abstract class Node
 {
-    public abstract int Evaluate();
+    public abstract double Evaluate();
     public abstract void PrintTree(string indent, bool last);
 }
 
 public class NumberNode : Node
 {
-    private int value;
+    private double value;
 
-    public NumberNode(int value)
+    public NumberNode(double value)
     {
         this.value = value;
     }
 
-    public override int Evaluate() => value;
+    public override double Evaluate() => value;
 
     public override void PrintTree(string indent, bool last)
     {
@@ -226,7 +226,7 @@ public class BinaryOperationNode : Node
         this.op = op;
     }
 
-    public override int Evaluate()
+    public override double Evaluate()
     {
         return op switch
         {
@@ -238,7 +238,7 @@ public class BinaryOperationNode : Node
         };
     }
 
-    private static int Division(int left, int right)
+    private static double Division(double left, double right)
     {
         if (right == 0)
         {
